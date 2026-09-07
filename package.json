@@ -1,0 +1,15 @@
+{
+  "name": "trading-scanner",
+  "version": "1.0.0",
+  "description": "Personal stock and options scanner",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1"
+  }
+}

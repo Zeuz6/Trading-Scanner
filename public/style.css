@@ -1,0 +1,70 @@
+body {
+  background-color: #0b0b0b;
+  color: white;
+  font-family: Arial, sans-serif;
+  margin: 0;
+}
+
+.container {
+  width: 95%;
+  margin: 40px auto;
+}
+
+h1 {
+  margin-bottom: 25px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 14px;
+  text-align: center;
+  border-bottom: 1px solid #333;
+}
+
+th {
+  color: #bbb;
+  font-size: 14px;
+}
+
+.ticker {
+  font-weight: bold;
+}
+
+.positive {
+  color: #00e676;
+}
+
+.negative {
+  color: #ff3d57;
+}
+
+.break-up {
+  background-color: #00c853;
+  color: white;
+  border-radius: 5px;
+}
+
+.break-down {
+  background-color: #d50000;
+  color: white;
+  border-radius: 5px;
+}
+
+.neutral {
+  color: #ffc107;
+}
+
+.bullish {
+  background-color: #00c853;
+  font-size: 20px;
+}
+
+.bearish {
+  background-color: #d50000;
+  font-size: 20px;
+}
