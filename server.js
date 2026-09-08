@@ -545,6 +545,177 @@ app.get(
     }
 );
 
+app.get(
+    "/api/ema",
+    async (req, res) => {
+
+        try {
+
+            const symbols =
+                parseSymbols(
+                    req.query.symbols
+                );
+
+            if (symbols.length === 0) {
+
+                return res
+                    .status(400)
+                    .json({
+                        error:
+                            "No valid symbols provided"
+                    });
+            }
+
+
+            // Get enough history for a stable EMA
+            const end =
+                new Date();
+
+            const start =
+                new Date(
+                    end.getTime() -
+                    5 * 24 * 60 * 60 * 1000
+                );
+
+
+            const params =
+                new URLSearchParams({
+                    symbols:
+                        symbols.join(","),
+
+                    timeframe:
+                        "10Min",
+
+                    start:
+                        start.toISOString(),
+
+                    end:
+                        end.toISOString(),
+
+                    feed:
+                        "iex",
+
+                    adjustment:
+                        "raw",
+
+                    sort:
+                        "asc",
+
+                    limit:
+                        "10000"
+                });
+
+
+            const url =
+                `https://data.alpaca.markets/v2/stocks/bars?${params}`;
+
+
+            const response =
+                await fetchWithRetry(
+                    url,
+                    {
+                        headers:
+                            ALPACA_HEADERS
+                    }
+                );
+
+
+            const data =
+                await response.json();
+
+
+            const result = {};
+
+
+            for (const symbol of symbols) {
+
+                const bars =
+                    data.bars?.[symbol] || [];
+
+
+                if (bars.length < 8) {
+
+                    result[symbol] = {
+                        ema8: null
+                    };
+
+                    continue;
+                }
+
+
+                const closes =
+                    bars.map(
+                        bar => bar.c
+                    );
+
+
+                // -----------------------------
+                // EMA(8)
+                // -----------------------------
+
+                const period = 8;
+
+                const multiplier =
+                    2 / (period + 1);
+
+
+                // Start EMA with SMA of
+                // first 8 closes
+                let ema =
+                    closes
+                        .slice(0, period)
+                        .reduce(
+                            (sum, close) =>
+                                sum + close,
+                            0
+                        ) / period;
+
+
+                for (
+                    let i = period;
+                    i < closes.length;
+                    i++
+                ) {
+
+                    ema =
+                        (
+                            closes[i] -
+                            ema
+                        ) *
+                        multiplier +
+                        ema;
+                }
+
+
+                result[symbol] = {
+                    ema8: ema
+                };
+            }
+
+
+            res.json({
+                ema: result
+            });
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "EMA error:",
+                error.message
+            );
+
+
+            res
+                .status(500)
+                .json({
+                    error:
+                        "Failed to calculate EMA"
+                });
+        }
+    }
+);
 
 // --------------------------------------------------
 // Start server

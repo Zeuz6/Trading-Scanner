@@ -40,6 +40,8 @@ const PREMARKET_REFRESH_MS =
 // Stores PMH/PML
 const premarketCache = {};
 
+const emaCache = {};
+
 
 // Prevent overlapping requests
 let scannerLoading = false;
@@ -177,6 +179,65 @@ function createTrend(trend) {
 // GET ALL SNAPSHOTS
 // ONE request for all tickers
 // ==================================================
+
+async function getEMAData() {
+
+    const symbols =
+        tickers.join(",");
+
+
+    const response =
+        await fetch(
+            `/api/ema?symbols=${encodeURIComponent(symbols)}`
+        );
+
+
+    if (!response.ok) {
+
+        throw new Error(
+            "Could not load EMA data"
+        );
+    }
+
+
+    return response.json();
+}
+
+async function refreshEMAData() {
+
+    try {
+
+        const data =
+            await getEMAData();
+
+
+        const values =
+            data.ema || {};
+
+
+        for (const ticker of tickers) {
+
+            emaCache[ticker] =
+                values[ticker] || {
+                    ema8: null
+                };
+        }
+
+
+        console.log(
+            "10m EMA updated"
+        );
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "EMA update failed:",
+            error
+        );
+    }
+}
 
 async function getAllSnapshots() {
 
@@ -487,6 +548,31 @@ async function loadScanner() {
                     previousClose
                 );
 
+            const emaData =
+            emaCache[ticker] || {
+                ema8: null
+            };
+            
+            
+            const ema8 =
+                emaData.ema8;
+            
+            
+            let emaDistance = null;
+            
+            
+            if (ema8 !== null) {
+            
+                emaDistance =
+                    (
+                        (
+                            price -
+                            ema8
+                        ) /
+                        ema8
+                    ) * 100;
+            }
+
             // ----------------------------------
             // PRIORITY SCORE
             // ----------------------------------
@@ -536,6 +622,9 @@ async function loadScanner() {
                 pdlBreak,
                 pmhBreak,
                 pmlBreak,
+
+                ema8,
+                emaDistance,
 
                 trend,
                 priority
@@ -600,6 +689,9 @@ async function loadScanner() {
                 pmhBreak,
                 pmlBreak,
 
+                ema8,
+                emaDistance,
+
                 trend
             } = stock;
 
@@ -654,15 +746,6 @@ async function loadScanner() {
                     </td>
 
                     <td
-                        title="PDL: ${previousLow.toFixed(2)}"
-                    >
-                        ${createBreakCell(
-                            pdlBreak,
-                            "down"
-                        )}
-                    </td>
-
-                    <td
                         title="${
                             pmh !== null
                                 ? `PMH: ${pmh.toFixed(2)}`
@@ -673,6 +756,15 @@ async function loadScanner() {
                     </td>
 
                     <td
+                        title="PDL: ${previousLow.toFixed(2)}"
+                    >
+                        ${createBreakCell(
+                            pdlBreak,
+                            "down"
+                        )}
+                    </td>
+
+                    <td
                         title="${
                             pml !== null
                                 ? `PML: ${pml.toFixed(2)}`
@@ -680,6 +772,32 @@ async function loadScanner() {
                         }"
                     >
                         ${pmlDisplay}
+                    </td>
+
+                    <td>
+                        ${
+                            ema8 !== null
+                                ? ema8.toFixed(2)
+                                : "-"
+                        }
+                    </td>
+
+                    <td class="${
+                        emaDistance === null
+                            ? ""
+                            : emaDistance >= 0
+                                ? "positive"
+                                : "negative"
+                    }">
+                        ${
+                            emaDistance !== null
+                                ? `${emaDistance >= 0 ? "+" : ""}${emaDistance.toFixed(2)}%`
+                                : "-"
+                        }
+                    </td>
+
+                    <td>
+                        ${createTrend(trend)}
                     </td>
 
                     <td>
@@ -766,6 +884,23 @@ async function startScanner() {
         },
 
         PREMARKET_REFRESH_MS
+    );
+
+    // ------------------------------------------
+    // 10 MINUTE 8EMA
+    // every 60 seconds
+    // ------------------------------------------
+
+    setInterval(
+        async () => {
+
+            await refreshEMAData();
+
+            // Redraw scanner with updated EMA
+            await loadScanner();
+
+        },
+        60000
     );
 }
 
