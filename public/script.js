@@ -11,7 +11,16 @@ const tickers = [
     "AMZN",
     "GOOGL",
     "MSFT",
+    "NFLX",
+    "AVGO",
     "MU",
+    "PLTR",
+    "INTC",
+    "QCOM",
+    "ORCL",
+    "CRM",
+    "JPM",
+    "COIN",
     "SPY",
     "QQQ"
 ];
