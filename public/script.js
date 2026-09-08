@@ -392,50 +392,32 @@ async function refreshPremarketLevels() {
 
 async function loadScanner() {
 
-    // Prevent multiple scanner requests
-    // from stacking on top of each other
     if (scannerLoading) {
         return;
     }
 
-
     scannerLoading = true;
-
 
     try {
 
         const snapshots =
             await getAllSnapshots();
 
-
-        let tableHTML = "";
-
+        const scannerRows = [];
 
         for (const ticker of tickers) {
 
             const data =
                 snapshots[ticker];
 
-
             if (!data) {
-
-                console.warn(
-                    `No snapshot for ${ticker}`
-                );
-
                 continue;
             }
-
-
-            // ------------------------------------------
-            // CURRENT PRICE
-            // ------------------------------------------
 
             const price =
                 data.latestTrade?.p ??
                 data.minuteBar?.c ??
                 data.dailyBar?.c;
-
 
             if (
                 price === null ||
@@ -444,31 +426,17 @@ async function loadScanner() {
                 continue;
             }
 
-
-            // ------------------------------------------
-            // VOLUME
-            // ------------------------------------------
-
             const volume =
-                data.dailyBar?.v ??
-                0;
-
-
-            // ------------------------------------------
-            // PREVIOUS DAY
-            // ------------------------------------------
+                data.dailyBar?.v ?? 0;
 
             const previousClose =
                 data.prevDailyBar?.c;
 
-
             const previousHigh =
                 data.prevDailyBar?.h;
 
-
             const previousLow =
                 data.prevDailyBar?.l;
-
 
             if (
                 previousClose === undefined ||
@@ -477,11 +445,6 @@ async function loadScanner() {
             ) {
                 continue;
             }
-
-
-            // ------------------------------------------
-            // % CHANGE
-            // ------------------------------------------
 
             const percentChange =
                 (
@@ -492,54 +455,31 @@ async function loadScanner() {
                     previousClose
                 ) * 100;
 
-
-            // ------------------------------------------
-            // PDH / PDL
-            // ------------------------------------------
-
             const pdhBreak =
-                price >
-                previousHigh;
-
+                price > previousHigh;
 
             const pdlBreak =
-                price <
-                previousLow;
-
-
-            // ------------------------------------------
-            // PMH / PML
-            // ------------------------------------------
+                price < previousLow;
 
             const premarket =
-                premarketCache[ticker] ||
-                {
+                premarketCache[ticker] || {
                     pmh: null,
                     pml: null
                 };
 
-
             const pmh =
                 premarket.pmh;
 
-
             const pml =
                 premarket.pml;
-
 
             const pmhBreak =
                 pmh !== null &&
                 price > pmh;
 
-
             const pmlBreak =
                 pml !== null &&
                 price < pml;
-
-
-            // ------------------------------------------
-            // TREND
-            // ------------------------------------------
 
             const trend =
                 determineTrend(
@@ -547,14 +487,127 @@ async function loadScanner() {
                     previousClose
                 );
 
+            // ----------------------------------
+            // PRIORITY SCORE
+            // ----------------------------------
+
+            let priority = 0;
+
+            // Bullish strongest:
+            // broke BOTH PDH and PMH
+            if (pdhBreak && pmhBreak) {
+                priority = 5;
+            }
+
+            // Bearish strongest:
+            // broke BOTH PDL and PML
+            else if (pdlBreak && pmlBreak) {
+                priority = 5;
+            }
+
+            // Bullish single breakout
+            else if (pdhBreak || pmhBreak) {
+                priority = 4;
+            }
+
+            // Bearish single breakdown
+            else if (pdlBreak || pmlBreak) {
+                priority = 4;
+            }
+
+            // No major breakout
+            else {
+                priority = 1;
+            }
+
+            scannerRows.push({
+                ticker,
+                price,
+                volume,
+                percentChange,
+
+                previousHigh,
+                previousLow,
+
+                pmh,
+                pml,
+
+                pdhBreak,
+                pdlBreak,
+                pmhBreak,
+                pmlBreak,
+
+                trend,
+                priority
+            });
+        }
+
+
+        // ----------------------------------
+        // SORT
+        // ----------------------------------
+
+        scannerRows.sort(
+            (a, b) => {
+
+                // First: breakout priority
+                if (
+                    b.priority !==
+                    a.priority
+                ) {
+                    return (
+                        b.priority -
+                        a.priority
+                    );
+                }
+
+                // Second:
+                // strongest % mover
+                return (
+                    Math.abs(
+                        b.percentChange
+                    ) -
+                    Math.abs(
+                        a.percentChange
+                    )
+                );
+            }
+        );
+
+
+        // ----------------------------------
+        // BUILD TABLE
+        // ----------------------------------
+
+        let tableHTML = "";
+
+        for (const stock of scannerRows) {
+
+            const {
+                ticker,
+                price,
+                volume,
+                percentChange,
+
+                previousHigh,
+                previousLow,
+
+                pmh,
+                pml,
+
+                pdhBreak,
+                pdlBreak,
+                pmhBreak,
+                pmlBreak,
+
+                trend
+            } = stock;
 
             const changeClass =
                 percentChange >= 0
                     ? "positive"
                     : "negative";
 
-
-            // PMH / PML show "-" when unavailable
             const pmhDisplay =
                 pmh === null
                     ? "-"
@@ -562,7 +615,6 @@ async function loadScanner() {
                         pmhBreak,
                         "up"
                     );
-
 
             const pmlDisplay =
                 pml === null
@@ -572,11 +624,6 @@ async function loadScanner() {
                         "down"
                     );
 
-
-            // ------------------------------------------
-            // CREATE ROW
-            // ------------------------------------------
-
             tableHTML += `
 
                 <tr>
@@ -585,21 +632,17 @@ async function loadScanner() {
                         $${ticker}
                     </td>
 
-
                     <td>
                         ${price.toFixed(2)}
                     </td>
-
 
                     <td>
                         ${formatVolume(volume)}
                     </td>
 
-
                     <td class="${changeClass}">
                         ${percentChange.toFixed(2)}%
                     </td>
-
 
                     <td
                         title="PDH: ${previousHigh.toFixed(2)}"
@@ -610,7 +653,6 @@ async function loadScanner() {
                         )}
                     </td>
 
-
                     <td
                         title="PDL: ${previousLow.toFixed(2)}"
                     >
@@ -619,7 +661,6 @@ async function loadScanner() {
                             "down"
                         )}
                     </td>
-
 
                     <td
                         title="${
@@ -631,7 +672,6 @@ async function loadScanner() {
                         ${pmhDisplay}
                     </td>
 
-
                     <td
                         title="${
                             pml !== null
@@ -642,21 +682,14 @@ async function loadScanner() {
                         ${pmlDisplay}
                     </td>
 
-
                     <td>
                         ${createTrend(trend)}
                     </td>
 
                 </tr>
-
             `;
         }
 
-
-        // Update table all at once
-        // instead of clearing it first.
-        //
-        // This reduces flickering.
         document.getElementById(
             "scanner-body"
         ).innerHTML =
@@ -666,8 +699,6 @@ async function loadScanner() {
 
     catch (error) {
 
-        // Keep old values on screen if
-        // Alpaca temporarily disconnects
         console.error(
             "Scanner update failed:",
             error
