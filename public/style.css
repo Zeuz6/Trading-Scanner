@@ -68,3 +68,51 @@ th {
   background-color: #d50000;
   font-size: 20px;
 }
+
+.pinned-etf {
+  background-color: #171717;
+}
+
+.pinned-etf:hover {
+  background-color: #202020;
+}
+
+.pinned-etf {
+  background-color: #171717;
+}
+
+.level-col {
+  width: 55px;
+  min-width: 55px;
+  max-width: 55px;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+/* pinned ETFs stay blue no matter what */
+.pinned-etf {
+  background-color: rgba(40, 90, 190, 0.22);
+}
+
+.pinned-etf:hover {
+  background-color: rgba(40, 90, 190, 0.32);
+}
+
+/* bullish rows */
+.bullish-break-row {
+  background-color: rgba(0, 200, 83, 0.12);
+}
+
+.bullish-break-row:hover {
+  background-color: rgba(0, 200, 83, 0.20);
+}
+
+/* bearish rows */
+.bearish-break-row {
+  background-color: rgba(213, 0, 0, 0.12);
+}
+
+.bearish-break-row:hover {
+  background-color: rgba(213, 0, 0, 0.20);
+}
+

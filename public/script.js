@@ -2,6 +2,12 @@
 // SETTINGS
 // ==================================================
 
+const pinnedETFs = [
+    "SPY",
+    "QQQ",
+    "IWM"
+];
+
 const tickers = [
     "AAPL",
     "NVDA",
@@ -22,31 +28,32 @@ const tickers = [
     "JPM",
     "COIN",
     "SPY",
-    "QQQ"
+    "QQQ",
+    "IWM"
 ];
 
 
 // Refresh stock prices every 5 seconds
-const SCANNER_REFRESH_MS =
-    5000;
+const SCANNER_REFRESH_MS = 5000;
 
 
-// Refresh PMH/PML every 60 seconds
-// while premarket is active
-const PREMARKET_REFRESH_MS =
-    60000;
+// Refresh PMH / PML every 60 seconds
+const PREMARKET_REFRESH_MS = 60000;
 
 
-// Stores PMH/PML
+// Refresh EMA every 60 seconds
+const EMA_REFRESH_MS = 60000;
+
+
+// Stores data
 const premarketCache = {};
-
 const emaCache = {};
 
 
 // Prevent overlapping requests
 let scannerLoading = false;
-
 let premarketLoading = false;
+let emaLoading = false;
 
 
 
@@ -63,24 +70,19 @@ function formatVolume(volume) {
         return "-";
     }
 
-
     if (volume >= 1_000_000) {
 
         return (
-            volume /
-            1_000_000
+            volume / 1_000_000
         ).toFixed(2) + "M";
     }
-
 
     if (volume >= 1_000) {
 
         return (
-            volume /
-            1_000
+            volume / 1_000
         ).toFixed(2) + "K";
     }
-
 
     return volume.toString();
 }
@@ -100,7 +102,6 @@ function createBreakCell(
         return "";
     }
 
-
     if (direction === "up") {
 
         return `
@@ -109,7 +110,6 @@ function createBreakCell(
             </span>
         `;
     }
-
 
     return `
         <span class="break-down">
@@ -121,7 +121,7 @@ function createBreakCell(
 
 
 // ==================================================
-// BASIC TREND
+// TREND
 // ==================================================
 
 function determineTrend(
@@ -133,15 +133,12 @@ function determineTrend(
         return "bullish";
     }
 
-
     if (price < previousClose) {
         return "bearish";
     }
 
-
     return "neutral";
 }
-
 
 
 function createTrend(trend) {
@@ -155,7 +152,6 @@ function createTrend(trend) {
         `;
     }
 
-
     if (trend === "bearish") {
 
         return `
@@ -164,7 +160,6 @@ function createTrend(trend) {
             </span>
         `;
     }
-
 
     return `
         <span class="neutral">
@@ -176,8 +171,36 @@ function createTrend(trend) {
 
 
 // ==================================================
-// GET ALL SNAPSHOTS
-// ONE request for all tickers
+// SNAPSHOT DATA
+// ==================================================
+
+async function getAllSnapshots() {
+
+    const symbols =
+        tickers.join(",");
+
+    const response =
+        await fetch(
+            `/api/snapshots?symbols=${encodeURIComponent(symbols)}`
+        );
+
+    if (!response.ok) {
+
+        throw new Error(
+            "Could not load snapshots"
+        );
+    }
+
+    const data =
+        await response.json();
+
+    return data.snapshots || {};
+}
+
+
+
+// ==================================================
+// EMA DATA
 // ==================================================
 
 async function getEMAData() {
@@ -185,12 +208,10 @@ async function getEMAData() {
     const symbols =
         tickers.join(",");
 
-
     const response =
         await fetch(
             `/api/ema?symbols=${encodeURIComponent(symbols)}`
         );
-
 
     if (!response.ok) {
 
@@ -199,21 +220,25 @@ async function getEMAData() {
         );
     }
 
-
     return response.json();
 }
 
+
 async function refreshEMAData() {
+
+    if (emaLoading) {
+        return;
+    }
+
+    emaLoading = true;
 
     try {
 
         const data =
             await getEMAData();
 
-
         const values =
             data.ema || {};
-
 
         for (const ticker of tickers) {
 
@@ -223,9 +248,8 @@ async function refreshEMAData() {
                 };
         }
 
-
         console.log(
-            "10m EMA updated"
+            "10m 8EMA updated"
         );
 
     }
@@ -237,40 +261,17 @@ async function refreshEMAData() {
             error
         );
     }
-}
 
-async function getAllSnapshots() {
+    finally {
 
-    const symbols =
-        tickers.join(",");
-
-
-    const response =
-        await fetch(
-            `/api/snapshots?symbols=${encodeURIComponent(symbols)}`
-        );
-
-
-    if (!response.ok) {
-
-        throw new Error(
-            "Could not load snapshots"
-        );
+        emaLoading = false;
     }
-
-
-    const data =
-        await response.json();
-
-
-    return data.snapshots;
 }
 
 
 
 // ==================================================
-// GET ALL PMH / PML LEVELS
-// ONE request for all tickers
+// PREMARKET DATA
 // ==================================================
 
 async function getPremarketLevels() {
@@ -278,12 +279,10 @@ async function getPremarketLevels() {
     const symbols =
         tickers.join(",");
 
-
     const response =
         await fetch(
             `/api/premarket?symbols=${encodeURIComponent(symbols)}`
         );
-
 
     if (!response.ok) {
 
@@ -292,14 +291,13 @@ async function getPremarketLevels() {
         );
     }
 
-
     return response.json();
 }
 
 
 
 // ==================================================
-// DETECT CURRENT EASTERN TIME
+// EASTERN TIME
 // ==================================================
 
 function getEasternTime() {
@@ -324,7 +322,6 @@ function getEasternTime() {
             new Date()
         );
 
-
     const hour =
         Number(
             parts.find(
@@ -333,7 +330,6 @@ function getEasternTime() {
             )?.value
         );
 
-
     const minute =
         Number(
             parts.find(
@@ -341,7 +337,6 @@ function getEasternTime() {
                     part.type === "minute"
             )?.value
         );
-
 
     return {
         hour,
@@ -352,12 +347,7 @@ function getEasternTime() {
 
 
 // ==================================================
-// SHOULD PMH/PML STILL UPDATE?
-//
-// 4:00 AM → 9:35 AM ET
-//
-// Extra 5 minutes allows one final refresh
-// after premarket closes.
+// SHOULD PREMARKET DATA REFRESH?
 // ==================================================
 
 function shouldRefreshPremarket() {
@@ -368,19 +358,15 @@ function shouldRefreshPremarket() {
     } =
         getEasternTime();
 
-
     const minutesSinceMidnight =
         hour * 60 +
         minute;
 
-
     const start =
         4 * 60;
 
-
     const stop =
         9 * 60 + 35;
-
 
     return (
         minutesSinceMidnight >= start &&
@@ -391,7 +377,7 @@ function shouldRefreshPremarket() {
 
 
 // ==================================================
-// UPDATE PREMARKET CACHE
+// REFRESH PREMARKET CACHE
 // ==================================================
 
 async function refreshPremarketLevels() {
@@ -400,19 +386,15 @@ async function refreshPremarketLevels() {
         return;
     }
 
-
     premarketLoading = true;
-
 
     try {
 
         const data =
             await getPremarketLevels();
 
-
         const levels =
             data.levels || {};
-
 
         for (const ticker of tickers) {
 
@@ -422,7 +404,6 @@ async function refreshPremarketLevels() {
                     pml: null
                 };
         }
-
 
         console.log(
             "PMH/PML updated:",
@@ -466,6 +447,11 @@ async function loadScanner() {
 
         const scannerRows = [];
 
+
+        // ------------------------------------------
+        // BUILD DATA OBJECTS
+        // ------------------------------------------
+
         for (const ticker of tickers) {
 
             const data =
@@ -475,6 +461,8 @@ async function loadScanner() {
                 continue;
             }
 
+
+            // Current price
             const price =
                 data.latestTrade?.p ??
                 data.minuteBar?.c ??
@@ -487,9 +475,13 @@ async function loadScanner() {
                 continue;
             }
 
+
+            // Volume
             const volume =
                 data.dailyBar?.v ?? 0;
 
+
+            // Previous day
             const previousClose =
                 data.prevDailyBar?.c;
 
@@ -499,6 +491,7 @@ async function loadScanner() {
             const previousLow =
                 data.prevDailyBar?.l;
 
+
             if (
                 previousClose === undefined ||
                 previousHigh === undefined ||
@@ -506,6 +499,11 @@ async function loadScanner() {
             ) {
                 continue;
             }
+
+
+            // ------------------------------------------
+            // % CHANGE
+            // ------------------------------------------
 
             const percentChange =
                 (
@@ -516,11 +514,21 @@ async function loadScanner() {
                     previousClose
                 ) * 100;
 
+
+            // ------------------------------------------
+            // PDH / PDL BREAKS
+            // ------------------------------------------
+
             const pdhBreak =
                 price > previousHigh;
 
             const pdlBreak =
                 price < previousLow;
+
+
+            // ------------------------------------------
+            // PREMARKET LEVELS
+            // ------------------------------------------
 
             const premarket =
                 premarketCache[ticker] || {
@@ -542,27 +550,38 @@ async function loadScanner() {
                 pml !== null &&
                 price < pml;
 
+
+            // ------------------------------------------
+            // TREND
+            // ------------------------------------------
+
             const trend =
                 determineTrend(
                     price,
                     previousClose
                 );
 
+
+            // ------------------------------------------
+            // 10 MINUTE 8EMA
+            // ------------------------------------------
+
             const emaData =
-            emaCache[ticker] || {
-                ema8: null
-            };
-            
-            
+                emaCache[ticker] || {
+                    ema8: null
+                };
+
             const ema8 =
                 emaData.ema8;
-            
-            
-            let emaDistance = null;
-            
-            
-            if (ema8 !== null) {
-            
+
+            let emaDistance =
+                null;
+
+            if (
+                ema8 !== null &&
+                ema8 !== 0
+            ) {
+
                 emaDistance =
                     (
                         (
@@ -573,31 +592,42 @@ async function loadScanner() {
                     ) * 100;
             }
 
-            // ----------------------------------
-            // PRIORITY SCORE
-            // ----------------------------------
+
+            // ------------------------------------------
+            // BREAKOUT PRIORITY
+            // ------------------------------------------
 
             let priority = 0;
 
-            // Bullish strongest:
-            // broke BOTH PDH and PMH
-            if (pdhBreak && pmhBreak) {
+            // Broke both bullish levels
+            if (
+                pdhBreak &&
+                pmhBreak
+            ) {
                 priority = 5;
             }
 
-            // Bearish strongest:
-            // broke BOTH PDL and PML
-            else if (pdlBreak && pmlBreak) {
+            // Broke both bearish levels
+            else if (
+                pdlBreak &&
+                pmlBreak
+            ) {
                 priority = 5;
             }
 
-            // Bullish single breakout
-            else if (pdhBreak || pmhBreak) {
+            // Single bullish breakout
+            else if (
+                pdhBreak ||
+                pmhBreak
+            ) {
                 priority = 4;
             }
 
-            // Bearish single breakdown
-            else if (pdlBreak || pmlBreak) {
+            // Single bearish breakdown
+            else if (
+                pdlBreak ||
+                pmlBreak
+            ) {
                 priority = 4;
             }
 
@@ -606,52 +636,120 @@ async function loadScanner() {
                 priority = 1;
             }
 
+
             scannerRows.push({
+
                 ticker,
+
                 price,
+
                 volume,
+
                 percentChange,
 
                 previousHigh,
+
                 previousLow,
 
                 pmh,
+
                 pml,
 
                 pdhBreak,
+
                 pdlBreak,
+
                 pmhBreak,
+
                 pmlBreak,
 
                 ema8,
+
                 emaDistance,
 
                 trend,
+
                 priority
             });
         }
 
 
-        // ----------------------------------
+
+        // ==================================================
         // SORT
-        // ----------------------------------
+        // ==================================================
 
         scannerRows.sort(
             (a, b) => {
 
-                // First: breakout priority
+                const aPinned =
+                    pinnedETFs.includes(
+                        a.ticker
+                    );
+
+                const bPinned =
+                    pinnedETFs.includes(
+                        b.ticker
+                    );
+
+
+                // ------------------------------------------
+                // 1. PINNED ETFs FIRST
+                // ------------------------------------------
+
+                if (
+                    aPinned &&
+                    !bPinned
+                ) {
+                    return -1;
+                }
+
+                if (
+                    !aPinned &&
+                    bPinned
+                ) {
+                    return 1;
+                }
+
+
+                // Maintain:
+                // SPY → QQQ → IWM
+                if (
+                    aPinned &&
+                    bPinned
+                ) {
+
+                    return (
+                        pinnedETFs.indexOf(
+                            a.ticker
+                        ) -
+                        pinnedETFs.indexOf(
+                            b.ticker
+                        )
+                    );
+                }
+
+
+                // ------------------------------------------
+                // 2. BREAKOUT PRIORITY
+                // ------------------------------------------
+
                 if (
                     b.priority !==
                     a.priority
                 ) {
+
                     return (
                         b.priority -
                         a.priority
                     );
                 }
 
-                // Second:
-                // strongest % mover
+
+                // ------------------------------------------
+                // 3. BIGGEST % MOVER
+                // ------------------------------------------
+
                 return (
                     Math.abs(
                         b.percentChange
@@ -664,41 +762,60 @@ async function loadScanner() {
         );
 
 
-        // ----------------------------------
+
+        // ==================================================
         // BUILD TABLE
-        // ----------------------------------
+        // ==================================================
 
-        let tableHTML = "";
+        let tableHTML =
+            "";
 
-        for (const stock of scannerRows) {
+
+        for (
+            const stock
+            of scannerRows
+        ) {
 
             const {
+
                 ticker,
+
                 price,
+
                 volume,
+
                 percentChange,
 
                 previousHigh,
+
                 previousLow,
 
                 pmh,
+
                 pml,
 
                 pdhBreak,
+
                 pdlBreak,
+
                 pmhBreak,
+
                 pmlBreak,
 
                 ema8,
+
                 emaDistance,
 
                 trend
+
             } = stock;
+
 
             const changeClass =
                 percentChange >= 0
                     ? "positive"
                     : "negative";
+
 
             const pmhDisplay =
                 pmh === null
@@ -708,6 +825,7 @@ async function loadScanner() {
                         "up"
                     );
 
+
             const pmlDisplay =
                 pml === null
                     ? "-"
@@ -716,71 +834,163 @@ async function loadScanner() {
                         "down"
                     );
 
+
+            // ------------------------------------------
+            // PINNED ETF ROW
+            // Must happen BEFORE template string
+            // ------------------------------------------
+
+            const isPinnedETF =
+                pinnedETFs.includes(ticker);
+
+
+            // Only true when BOTH bullish levels break
+            const bullishBreak =
+                pdhBreak && pmhBreak;
+
+
+            // Only true when BOTH bearish levels break
+            const bearishBreak =
+                pdlBreak && pmlBreak;
+
+
+            const rowClasses = [];
+
+
+            // ----------------------------------
+            // PINNED ETFs ALWAYS BLUE
+            // ----------------------------------
+
+            if (isPinnedETF) {
+
+                rowClasses.push(
+                    "pinned-etf"
+                );
+
+            }
+
+            // ----------------------------------
+            // NORMAL STOCKS
+            // ----------------------------------
+
+            else {
+
+                if (bullishBreak) {
+
+                    rowClasses.push(
+                        "bullish-break-row"
+                    );
+                }
+
+                if (bearishBreak) {
+
+                    rowClasses.push(
+                        "bearish-break-row"
+                    );
+                }
+            }
+
+
+            const rowClass =
+                rowClasses.join(" ");
+
+
+            // ------------------------------------------
+            // TABLE ROW
+            // ------------------------------------------
+
             tableHTML += `
 
-                <tr>
+                <tr class="${rowClass}">
+
 
                     <td class="ticker">
                         $${ticker}
                     </td>
 
+
                     <td>
                         ${price.toFixed(2)}
                     </td>
+
 
                     <td>
                         ${formatVolume(volume)}
                     </td>
 
+
                     <td class="${changeClass}">
                         ${percentChange.toFixed(2)}%
                     </td>
 
+
                     <td
+                        class="level-col"
                         title="PDH: ${previousHigh.toFixed(2)}"
                     >
+
                         ${createBreakCell(
                             pdhBreak,
                             "up"
                         )}
+
                     </td>
 
+
                     <td
+                        class="level-col"
+
                         title="${
                             pmh !== null
                                 ? `PMH: ${pmh.toFixed(2)}`
                                 : "PMH unavailable"
                         }"
                     >
+
                         ${pmhDisplay}
+
                     </td>
 
+
                     <td
+                        class="level-col"
+
                         title="PDL: ${previousLow.toFixed(2)}"
                     >
+
                         ${createBreakCell(
                             pdlBreak,
                             "down"
                         )}
+
                     </td>
 
+
                     <td
+                        class="level-col"
+
                         title="${
                             pml !== null
                                 ? `PML: ${pml.toFixed(2)}`
                                 : "PML unavailable"
                         }"
                     >
+
                         ${pmlDisplay}
+
                     </td>
 
+
                     <td>
+
                         ${
                             ema8 !== null
                                 ? ema8.toFixed(2)
                                 : "-"
                         }
+
                     </td>
+
 
                     <td class="${
                         emaDistance === null
@@ -789,24 +999,34 @@ async function loadScanner() {
                                 ? "positive"
                                 : "negative"
                     }">
+
                         ${
                             emaDistance !== null
                                 ? `${emaDistance >= 0 ? "+" : ""}${emaDistance.toFixed(2)}%`
                                 : "-"
                         }
+
                     </td>
 
-                    <td>
-                        ${createTrend(trend)}
-                    </td>
 
                     <td>
-                        ${createTrend(trend)}
+
+                        ${createTrend(
+                            trend
+                        )}
+
                     </td>
+
 
                 </tr>
             `;
         }
+
+
+
+        // ------------------------------------------
+        // UPDATE PAGE
+        // ------------------------------------------
 
         document.getElementById(
             "scanner-body"
@@ -825,7 +1045,8 @@ async function loadScanner() {
 
     finally {
 
-        scannerLoading = false;
+        scannerLoading =
+            false;
     }
 }
 
@@ -842,16 +1063,21 @@ async function startScanner() {
     );
 
 
-    // Get today's PMH / PML
+    // Load PMH / PML
     await refreshPremarketLevels();
 
 
-    // Get initial stock prices
+    // Load 10m 8EMA
+    await refreshEMAData();
+
+
+    // Initial scanner render
     await loadScanner();
 
 
+
     // ------------------------------------------
-    // STOCK DATA
+    // STOCK SNAPSHOTS
     // every 5 seconds
     // ------------------------------------------
 
@@ -859,6 +1085,7 @@ async function startScanner() {
         loadScanner,
         SCANNER_REFRESH_MS
     );
+
 
 
     // ------------------------------------------
@@ -875,9 +1102,6 @@ async function startScanner() {
 
                 await refreshPremarketLevels();
 
-
-                // Immediately redraw table
-                // after PMH/PML changes
                 await loadScanner();
             }
 
@@ -885,6 +1109,8 @@ async function startScanner() {
 
         PREMARKET_REFRESH_MS
     );
+
+
 
     // ------------------------------------------
     // 10 MINUTE 8EMA
@@ -896,14 +1122,18 @@ async function startScanner() {
 
             await refreshEMAData();
 
-            // Redraw scanner with updated EMA
             await loadScanner();
 
         },
-        60000
+
+        EMA_REFRESH_MS
     );
 }
 
 
+
+// ==================================================
+// RUN
+// ==================================================
 
 startScanner();
