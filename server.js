@@ -6,6 +6,10 @@ const app = express();
 
 const PORT = process.env.PORT || 3000;
 
+app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Scanner running on port ${PORT}`);
+});
+
 const ALPACA_HEADERS = {
     "APCA-API-KEY-ID": process.env.ALPACA_API_KEY,
     "APCA-API-SECRET-KEY": process.env.ALPACA_SECRET_KEY
