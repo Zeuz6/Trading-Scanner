@@ -4,58 +4,72 @@ require("dotenv").config();
 
 const app = express();
 
-const PORT = process.env.PORT || 3000;
+const PORT =
+    process.env.PORT || 3000;
 
-app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Scanner running on port ${PORT}`);
-});
+
+// ==================================================
+// ALPACA HEADERS
+// ==================================================
 
 const ALPACA_HEADERS = {
-    "APCA-API-KEY-ID": process.env.ALPACA_API_KEY,
-    "APCA-API-SECRET-KEY": process.env.ALPACA_SECRET_KEY
+
+    "APCA-API-KEY-ID":
+        process.env.ALPACA_API_KEY,
+
+    "APCA-API-SECRET-KEY":
+        process.env.ALPACA_SECRET_KEY
 };
 
 
-// --------------------------------------------------
-// Make sure API keys exist
-// --------------------------------------------------
-
+// Make sure credentials exist
 if (
     !process.env.ALPACA_API_KEY ||
     !process.env.ALPACA_SECRET_KEY
 ) {
+
     console.error(
-        "Missing Alpaca API keys. Check your .env file."
+        "❌ Missing Alpaca API keys. Check your .env file."
     );
 }
 
 
-// --------------------------------------------------
-// Serve files inside /public
-// --------------------------------------------------
+
+// ==================================================
+// SERVE WEBSITE
+// ==================================================
 
 app.use(
     express.static(
-        path.join(__dirname, "public")
+        path.join(
+            __dirname,
+            "public"
+        )
     )
 );
 
 
-// --------------------------------------------------
-// Sleep helper
-// --------------------------------------------------
+
+// ==================================================
+// HELPER: SLEEP
+// ==================================================
 
 function sleep(ms) {
-    return new Promise(resolve =>
-        setTimeout(resolve, ms)
+
+    return new Promise(
+        resolve =>
+            setTimeout(
+                resolve,
+                ms
+            )
     );
 }
 
 
-// --------------------------------------------------
-// Fetch with retry protection
-// Helps with ECONNRESET / temporary Alpaca errors
-// --------------------------------------------------
+
+// ==================================================
+// FETCH WITH RETRY
+// ==================================================
 
 async function fetchWithRetry(
     url,
@@ -71,33 +85,37 @@ async function fetchWithRetry(
 
         try {
 
-            const response = await fetch(
-                url,
-                {
-                    ...options,
+            const response =
+                await fetch(
+                    url,
+                    {
+                        ...options,
 
-                    // Give Alpaca 10 seconds
-                    // before abandoning the request
-                    signal:
-                        AbortSignal.timeout(10000)
-                }
-            );
+                        signal:
+                            AbortSignal.timeout(
+                                10000
+                            )
+                    }
+                );
 
 
-            // Retry rate limits and server errors
+            // Retry temporary server errors
             if (
                 response.status === 429 ||
                 response.status >= 500
             ) {
 
-                if (attempt < retries) {
+                if (
+                    attempt < retries
+                ) {
 
                     console.log(
-                        `Alpaca returned ${response.status}. Retrying...`
+                        `⚠️ Alpaca returned ${response.status}. Retrying...`
                     );
 
                     await sleep(
-                        750 * (attempt + 1)
+                        750 *
+                        (attempt + 1)
                     );
 
                     continue;
@@ -122,132 +140,393 @@ async function fetchWithRetry(
 
         catch (error) {
 
-            if (attempt === retries) {
+            if (
+                attempt === retries
+            ) {
+
                 throw error;
             }
 
+
             console.log(
-                `Connection failed (${error.message}). Retrying...`
+                `⚠️ Request failed: ${error.message}`
             );
 
+            console.log(
+                "Retrying..."
+            );
+
+
             await sleep(
-                750 * (attempt + 1)
+                750 *
+                (attempt + 1)
             );
         }
     }
 }
 
 
-// --------------------------------------------------
-// Clean ticker symbols coming from browser
-// --------------------------------------------------
 
-function parseSymbols(symbolString) {
+// ==================================================
+// PARSE STOCK SYMBOLS
+// ==================================================
+
+function parseSymbols(
+    symbolString
+) {
 
     if (!symbolString) {
+
         return [];
     }
 
+
     return symbolString
+
         .split(",")
-        .map(symbol =>
-            symbol
-                .trim()
-                .toUpperCase()
+
+        .map(
+            symbol =>
+                symbol
+                    .trim()
+                    .toUpperCase()
         )
-        .filter(symbol =>
-            /^[A-Z0-9.-]+$/.test(symbol)
+
+        .filter(
+            symbol =>
+                /^[A-Z0-9.-]+$/.test(
+                    symbol
+                )
         )
-        .slice(0, 30);
+
+        .slice(
+            0,
+            30
+        );
 }
 
 
-// --------------------------------------------------
-// Get today's New York date + UTC offset
-// --------------------------------------------------
 
-function getNewYorkDateInfo() {
+// ==================================================
+// NEW YORK DATE / TIME
+// Automatically handles EST / EDT
+// ==================================================
 
-    const now = new Date();
+function getNewYorkInfo() {
+
+    const now =
+        new Date();
 
 
-    const dateParts =
+    const formatter =
         new Intl.DateTimeFormat(
             "en-US",
             {
                 timeZone:
                     "America/New_York",
 
-                year: "numeric",
-                month: "2-digit",
-                day: "2-digit"
+                year:
+                    "numeric",
+
+                month:
+                    "2-digit",
+
+                day:
+                    "2-digit",
+
+                hour:
+                    "2-digit",
+
+                minute:
+                    "2-digit",
+
+                second:
+                    "2-digit",
+
+                hourCycle:
+                    "h23"
             }
-        ).formatToParts(now);
+        );
 
 
-    const getPart = type =>
-        dateParts.find(
-            part =>
-                part.type === type
-        )?.value;
+    const parts =
+        formatter.formatToParts(
+            now
+        );
+
+
+    const get =
+        type =>
+            parts.find(
+                part =>
+                    part.type === type
+            )?.value;
 
 
     const year =
-        getPart("year");
+        Number(
+            get("year")
+        );
 
     const month =
-        getPart("month");
+        Number(
+            get("month")
+        );
 
     const day =
-        getPart("day");
+        Number(
+            get("day")
+        );
+
+    const hour =
+        Number(
+            get("hour")
+        );
+
+    const minute =
+        Number(
+            get("minute")
+        );
+
+    const second =
+        Number(
+            get("second")
+        );
+
+
+    // Convert New York wall-clock time
+    // into a timezone offset.
+    const newYorkAsUTC =
+        Date.UTC(
+            year,
+            month - 1,
+            day,
+            hour,
+            minute,
+            second
+        );
+
+
+    const offsetMinutes =
+        Math.round(
+            (
+                newYorkAsUTC -
+                now.getTime()
+            ) /
+            60000
+        );
+
+
+    const sign =
+        offsetMinutes >= 0
+            ? "+"
+            : "-";
+
+
+    const absoluteOffset =
+        Math.abs(
+            offsetMinutes
+        );
+
+
+    const offsetHours =
+        Math.floor(
+            absoluteOffset / 60
+        );
+
+
+    const offsetMins =
+        absoluteOffset % 60;
+
+
+    const offset =
+        `${sign}${String(
+            offsetHours
+        ).padStart(
+            2,
+            "0"
+        )}:${String(
+            offsetMins
+        ).padStart(
+            2,
+            "0"
+        )}`;
 
 
     const nyDate =
-        `${year}-${month}-${day}`;
-
-
-    // Automatically handles EST / EDT
-    const offsetParts =
-        new Intl.DateTimeFormat(
-            "en-US",
-            {
-                timeZone:
-                    "America/New_York",
-
-                hour: "2-digit",
-
-                timeZoneName:
-                    "longOffset"
-            }
-        ).formatToParts(now);
-
-
-    const offsetName =
-        offsetParts.find(
-            part =>
-                part.type ===
-                "timeZoneName"
-        )?.value;
-
-
-    // Example:
-    // GMT-04:00 → -04:00
-    const offset =
-        offsetName
-            ?.replace("GMT", "")
-        || "-04:00";
+        `${year}-${String(
+            month
+        ).padStart(
+            2,
+            "0"
+        )}-${String(
+            day
+        ).padStart(
+            2,
+            "0"
+        )}`;
 
 
     return {
+
         nyDate,
+
+        hour,
+
+        minute,
+
+        second,
+
         offset
     };
 }
 
 
+
 // ==================================================
-// API ROUTE #1
-// ALL STOCK SNAPSHOTS
+// FETCH MULTI-SYMBOL BARS
+//
+// IMPORTANT:
+// Automatically follows Alpaca pagination.
+// ==================================================
+
+async function getAllBars({
+
+    symbols,
+
+    timeframe,
+
+    start,
+
+    end,
+
+    feed
+
+}) {
+
+    const barsBySymbol = {};
+
+    for (
+        const symbol
+        of symbols
+    ) {
+
+        barsBySymbol[symbol] =
+            [];
+    }
+
+
+    let nextPageToken =
+        null;
+
+
+    do {
+
+        const params =
+            new URLSearchParams({
+
+                symbols:
+                    symbols.join(","),
+
+                timeframe,
+
+                start,
+
+                end,
+
+                feed,
+
+                adjustment:
+                    "raw",
+
+                sort:
+                    "asc",
+
+                limit:
+                    "10000"
+            });
+
+
+        if (
+            nextPageToken
+        ) {
+
+            params.set(
+                "page_token",
+                nextPageToken
+            );
+        }
+
+
+        const url =
+            `https://data.alpaca.markets/v2/stocks/bars?${params}`;
+
+
+        const response =
+            await fetchWithRetry(
+                url,
+                {
+                    headers:
+                        ALPACA_HEADERS
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        const returnedBars =
+            data.bars || {};
+
+
+        for (
+            const [
+                symbol,
+                bars
+            ]
+            of Object.entries(
+                returnedBars
+            )
+        ) {
+
+            if (
+                !barsBySymbol[
+                    symbol
+                ]
+            ) {
+
+                barsBySymbol[
+                    symbol
+                ] = [];
+            }
+
+
+            barsBySymbol[
+                symbol
+            ].push(
+                ...bars
+            );
+        }
+
+
+        nextPageToken =
+            data.next_page_token ||
+            null;
+
+
+    } while (
+        nextPageToken
+    );
+
+
+    return barsBySymbol;
+}
+
+
+
+// ==================================================
+// SNAPSHOT ROUTE
 //
 // Example:
 // /api/snapshots?symbols=AAPL,NVDA,SPY
@@ -255,7 +534,11 @@ function getNewYorkDateInfo() {
 
 app.get(
     "/api/snapshots",
-    async (req, res) => {
+
+    async (
+        req,
+        res
+    ) => {
 
         try {
 
@@ -265,7 +548,9 @@ app.get(
                 );
 
 
-            if (symbols.length === 0) {
+            if (
+                symbols.length === 0
+            ) {
 
                 return res
                     .status(400)
@@ -278,10 +563,12 @@ app.get(
 
             const params =
                 new URLSearchParams({
+
                     symbols:
                         symbols.join(","),
 
-                    feed: "iex"
+                    feed:
+                        "iex"
                 });
 
 
@@ -304,7 +591,9 @@ app.get(
 
 
             res.json({
-                snapshots: data
+
+                snapshots:
+                    data
             });
 
         }
@@ -312,7 +601,7 @@ app.get(
         catch (error) {
 
             console.error(
-                "Snapshot error:",
+                "❌ Snapshot error:",
                 error.message
             );
 
@@ -328,20 +617,29 @@ app.get(
 );
 
 
+
 // ==================================================
-// API ROUTE #2
-// PREMARKET HIGH + LOW
+// PREMARKET ROUTE
 //
-// Calculates:
-// 4:00 AM → 9:29:59 AM Eastern
+// 4:00 AM → 9:29:59 AM ET
+//
+// Before 9:45:
+//     IEX provisional levels
+//
+// After 9:45:
+//     SIP finalized levels
 //
 // Example:
-// /api/premarket?symbols=AAPL,NVDA,SPY
+// /api/premarket?symbols=NVDA
 // ==================================================
 
 app.get(
     "/api/premarket",
-    async (req, res) => {
+
+    async (
+        req,
+        res
+    ) => {
 
         try {
 
@@ -351,7 +649,9 @@ app.get(
                 );
 
 
-            if (symbols.length === 0) {
+            if (
+                symbols.length === 0
+            ) {
 
                 return res
                     .status(400)
@@ -363,154 +663,224 @@ app.get(
 
 
             const {
+
                 nyDate,
+
+                hour,
+
+                minute,
+
                 offset
+
             } =
-                getNewYorkDateInfo();
+                getNewYorkInfo();
 
 
-            // 4:00 AM Eastern
+            // ------------------------------------------
+            // PREMARKET SESSION
+            // ------------------------------------------
+
             const start =
                 `${nyDate}T04:00:00${offset}`;
 
 
-            // Stop BEFORE 9:30 regular market candle
             const end =
                 `${nyDate}T09:29:59${offset}`;
 
 
-            // Default levels
-            const levels = {};
 
-            for (const symbol of symbols) {
+            // ------------------------------------------
+            // CHOOSE DATA FEED
+            // ------------------------------------------
 
-                levels[symbol] = {
-                    pmh: null,
-                    pml: null
+            const easternMinutes =
+                hour * 60 +
+                minute;
+
+
+            const SIP_START_TIME =
+                9 * 60 + 45;
+
+
+            const feed =
+                easternMinutes >=
+                SIP_START_TIME
+
+                    ? "sip"
+
+                    : "iex";
+
+
+            console.log(
+                `📊 Premarket feed: ${feed.toUpperCase()}`
+            );
+
+
+            // ------------------------------------------
+            // GET PREMARKET BARS
+            // ------------------------------------------
+
+            const barsBySymbol =
+                await getAllBars({
+
+                    symbols,
+
+                    timeframe:
+                        "1Min",
+
+                    start,
+
+                    end,
+
+                    feed
+                });
+
+
+
+            // ------------------------------------------
+            // CALCULATE PMH / PML
+            // ------------------------------------------
+
+            const levels =
+                {};
+
+
+            for (
+                const symbol
+                of symbols
+            ) {
+
+                const bars =
+                    barsBySymbol[
+                        symbol
+                    ] || [];
+
+
+                if (
+                    bars.length === 0
+                ) {
+
+                    levels[
+                        symbol
+                    ] = {
+
+                        pmh:
+                            null,
+
+                        pml:
+                            null
+                    };
+
+
+                    continue;
+                }
+
+
+                let pmh =
+                    -Infinity;
+
+
+                let pml =
+                    Infinity;
+
+
+                for (
+                    const bar
+                    of bars
+                ) {
+
+                    if (
+                        bar.h >
+                        pmh
+                    ) {
+
+                        pmh =
+                            bar.h;
+                    }
+
+
+                    if (
+                        bar.l <
+                        pml
+                    ) {
+
+                        pml =
+                            bar.l;
+                    }
+                }
+
+
+                levels[
+                    symbol
+                ] = {
+
+                    pmh,
+
+                    pml
                 };
             }
 
 
-            let nextPageToken = null;
 
+            // ------------------------------------------
+            // NVDA DEBUG
+            // ------------------------------------------
 
-            do {
+            if (
+                symbols.includes(
+                    "NVDA"
+                )
+            ) {
 
-                const params =
-                    new URLSearchParams({
-                        symbols:
-                            symbols.join(","),
+                console.log(
+                    "--------------------------------"
+                );
 
-                        timeframe:
-                            "1Min",
+                console.log(
+                    "NVDA PMH:",
+                    levels[
+                        "NVDA"
+                    ]?.pmh
+                );
 
-                        start,
-                        end,
+                console.log(
+                    "NVDA PML:",
+                    levels[
+                        "NVDA"
+                    ]?.pml
+                );
 
-                        feed:
-                            "iex",
+                console.log(
+                    "NVDA bars:",
+                    barsBySymbol[
+                        "NVDA"
+                    ]?.length ||
+                    0
+                );
 
-                        adjustment:
-                            "raw",
+                console.log(
+                    "Feed:",
+                    feed
+                );
 
-                        sort:
-                            "asc",
+                console.log(
+                    "--------------------------------"
+                );
+            }
 
-                        limit:
-                            "10000"
-                    });
-
-
-                if (nextPageToken) {
-
-                    params.set(
-                        "page_token",
-                        nextPageToken
-                    );
-                }
-
-
-                const url =
-                    `https://data.alpaca.markets/v2/stocks/bars?${params}`;
-
-
-                const response =
-                    await fetchWithRetry(
-                        url,
-                        {
-                            headers:
-                                ALPACA_HEADERS
-                        }
-                    );
-
-
-                const data =
-                    await response.json();
-
-
-                const barsBySymbol =
-                    data.bars || {};
-
-
-                // Calculate high and low
-                for (
-                    const [
-                        symbol,
-                        bars
-                    ]
-                    of Object.entries(
-                        barsBySymbol
-                    )
-                ) {
-
-                    if (!levels[symbol]) {
-                        continue;
-                    }
-
-
-                    for (const bar of bars) {
-
-                        const high =
-                            bar.h;
-
-                        const low =
-                            bar.l;
-
-
-                        if (
-                            levels[symbol].pmh === null ||
-                            high >
-                            levels[symbol].pmh
-                        ) {
-                            levels[symbol].pmh =
-                                high;
-                        }
-
-
-                        if (
-                            levels[symbol].pml === null ||
-                            low <
-                            levels[symbol].pml
-                        ) {
-                            levels[symbol].pml =
-                                low;
-                        }
-                    }
-                }
-
-
-                nextPageToken =
-                    data.next_page_token ||
-                    null;
-
-
-            } while (nextPageToken);
 
 
             res.json({
-                date: nyDate,
+
+                date:
+                    nyDate,
+
+                feed,
+
                 start,
+
                 end,
+
                 levels
             });
 
@@ -519,7 +889,7 @@ app.get(
         catch (error) {
 
             console.error(
-                "Premarket error:",
+                "❌ Premarket error:",
                 error.message
             );
 
@@ -527,31 +897,33 @@ app.get(
             res
                 .status(500)
                 .json({
+
                     error:
-                        "Failed to calculate premarket levels"
+                        "Failed to calculate premarket levels",
+
+                    message:
+                        error.message
                 });
         }
     }
 );
 
 
-// --------------------------------------------------
-// Simple server health test
-// --------------------------------------------------
 
-app.get(
-    "/api/health",
-    (req, res) => {
-
-        res.json({
-            status: "ok"
-        });
-    }
-);
+// ==================================================
+// 10 MINUTE 8EMA ROUTE
+//
+// Example:
+// /api/ema?symbols=AAPL,NVDA,SPY
+// ==================================================
 
 app.get(
     "/api/ema",
-    async (req, res) => {
+
+    async (
+        req,
+        res
+    ) => {
 
         try {
 
@@ -560,88 +932,104 @@ app.get(
                     req.query.symbols
                 );
 
-            if (symbols.length === 0) {
+
+            if (
+                symbols.length === 0
+            ) {
 
                 return res
                     .status(400)
                     .json({
+
                         error:
                             "No valid symbols provided"
                     });
             }
 
 
-            // Get enough history for a stable EMA
-            const end =
+
+            // Get enough history
+            // to calculate a stable EMA
+            const endDate =
                 new Date();
 
-            const start =
+
+            const startDate =
                 new Date(
-                    end.getTime() -
-                    5 * 24 * 60 * 60 * 1000
+                    endDate.getTime() -
+                    (
+                        14 *
+                        24 *
+                        60 *
+                        60 *
+                        1000
+                    )
                 );
 
 
-            const params =
-                new URLSearchParams({
-                    symbols:
-                        symbols.join(","),
+            const barsBySymbol =
+                await getAllBars({
+
+                    symbols,
 
                     timeframe:
                         "10Min",
 
                     start:
-                        start.toISOString(),
+                        startDate
+                            .toISOString(),
 
                     end:
-                        end.toISOString(),
+                        endDate
+                            .toISOString(),
 
                     feed:
-                        "iex",
-
-                    adjustment:
-                        "raw",
-
-                    sort:
-                        "asc",
-
-                    limit:
-                        "10000"
+                        "iex"
                 });
 
 
-            const url =
-                `https://data.alpaca.markets/v2/stocks/bars?${params}`;
+
+            const result =
+                {};
 
 
-            const response =
-                await fetchWithRetry(
-                    url,
-                    {
-                        headers:
-                            ALPACA_HEADERS
-                    }
+            const period =
+                8;
+
+
+            const multiplier =
+                2 /
+                (
+                    period +
+                    1
                 );
 
 
-            const data =
-                await response.json();
 
-
-            const result = {};
-
-
-            for (const symbol of symbols) {
+            for (
+                const symbol
+                of symbols
+            ) {
 
                 const bars =
-                    data.bars?.[symbol] || [];
+                    barsBySymbol[
+                        symbol
+                    ] || [];
 
 
-                if (bars.length < 8) {
+                if (
+                    bars.length <
+                    period
+                ) {
 
-                    result[symbol] = {
-                        ema8: null
+                    result[
+                        symbol
+                    ] = {
+
+                        ema8:
+                            null
                     };
+
 
                     continue;
                 }
@@ -649,56 +1037,85 @@ app.get(
 
                 const closes =
                     bars.map(
-                        bar => bar.c
+                        bar =>
+                            bar.c
                     );
 
 
-                // -----------------------------
-                // EMA(8)
-                // -----------------------------
 
-                const period = 8;
+                // ------------------------------------------
+                // INITIAL SMA
+                // ------------------------------------------
 
-                const multiplier =
-                    2 / (period + 1);
-
-
-                // Start EMA with SMA of
-                // first 8 closes
                 let ema =
                     closes
-                        .slice(0, period)
+                        .slice(
+                            0,
+                            period
+                        )
                         .reduce(
-                            (sum, close) =>
-                                sum + close,
-                            0
-                        ) / period;
+                            (
+                                sum,
+                                close
+                            ) =>
+                                sum +
+                                close,
 
+                            0
+                        )
+                    /
+                    period;
+
+
+
+                // ------------------------------------------
+                // EMA CALCULATION
+                // ------------------------------------------
 
                 for (
-                    let i = period;
-                    i < closes.length;
+                    let i =
+                        period;
+
+                    i <
+                    closes.length;
+
                     i++
                 ) {
 
                     ema =
                         (
-                            closes[i] -
-                            ema
-                        ) *
-                        multiplier +
+                            (
+                                closes[
+                                    i
+                                ] -
+                                ema
+                            )
+                            *
+                            multiplier
+                        )
+                        +
                         ema;
                 }
 
 
-                result[symbol] = {
-                    ema8: ema
+                result[
+                    symbol
+                ] = {
+
+                    ema8:
+                        ema,
+
+                    barsUsed:
+                        bars.length
                 };
             }
 
 
+
             res.json({
-                ema: result
+
+                ema:
+                    result
             });
 
         }
@@ -706,7 +1123,7 @@ app.get(
         catch (error) {
 
             console.error(
-                "EMA error:",
+                "❌ EMA error:",
                 error.message
             );
 
@@ -714,23 +1131,69 @@ app.get(
             res
                 .status(500)
                 .json({
+
                     error:
-                        "Failed to calculate EMA"
+                        "Failed to calculate EMA",
+
+                    message:
+                        error.message
                 });
         }
     }
 );
 
-// --------------------------------------------------
-// Start server
-// --------------------------------------------------
+
+
+// ==================================================
+// HEALTH CHECK
+// Used by Render
+// ==================================================
+
+app.get(
+    "/api/health",
+
+    (
+        req,
+        res
+    ) => {
+
+        res.json({
+
+            status:
+                "ok",
+
+            server:
+                "Trading Scanner"
+        });
+    }
+);
+
+
+
+// ==================================================
+// START SERVER
+// ==================================================
 
 app.listen(
     PORT,
+    "0.0.0.0",
+
     () => {
 
         console.log(
-            `Scanner running at http://localhost:${PORT}`
+            "================================"
+        );
+
+        console.log(
+            `🚀 Scanner running on port ${PORT}`
+        );
+
+        console.log(
+            `Local: http://localhost:${PORT}`
+        );
+
+        console.log(
+            "================================"
         );
     }
 );

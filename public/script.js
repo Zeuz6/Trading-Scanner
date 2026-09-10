@@ -366,7 +366,7 @@ function shouldRefreshPremarket() {
         4 * 60;
 
     const stop =
-        9 * 60 + 35;
+        9 * 60 + 50;
 
     return (
         minutesSinceMidnight >= start &&
