@@ -29,7 +29,8 @@ const tickers = [
     "COIN",
     "SPY",
     "QQQ",
-    "IWM"
+    "COIN",
+    "MSTR"
 ];
 
 
