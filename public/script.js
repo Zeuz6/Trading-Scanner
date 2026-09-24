@@ -2,13 +2,21 @@
 // SETTINGS
 // ==================================================
 
+// ==================================================
+// SETTINGS
+// ==================================================
+
+
+// ETFs that always stay pinned at the top
 const pinnedETFs = [
     "SPY",
     "QQQ",
     "IWM"
 ];
 
-const tickers = [
+
+// Main stock watchlist
+const watchlistStocks = [
     "AAPL",
     "NVDA",
     "META",
@@ -25,11 +33,27 @@ const tickers = [
     "ORCL",
     "CRM",
     "JPM",
-    "INTC",
-    "SPY",
-    "QQQ",
     "COIN",
-    "MSTR"
+    "MSTR",
+    "MU",
+    "SMCI",
+    "HOOD",
+    "BAC",
+    "XOM",
+    "TSM",
+    "ARM",
+    "UBER",
+    "MRNA"
+];
+
+
+// Combine pinned ETFs + stocks
+// Set automatically removes duplicates
+const tickers = [
+    ...new Set([
+        ...pinnedETFs,
+        ...watchlistStocks
+    ])
 ];
 
 
