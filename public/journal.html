@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Options Journal</title>
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+
+</head>
+
+
+<body>
+
+
+    <!-- ==================================================
+         TOP NAVIGATION
+         ================================================== -->
+
+    <header class="top-nav">
+
+        <div class="nav-brand">
+            Trading Dashboard
+        </div>
+
+
+        <nav class="nav-links">
+
+            <a
+                href="index.html"
+                class="nav-link"
+            >
+                Scanner
+            </a>
+
+
+            <a
+                href="journal.html"
+                class="nav-link active"
+            >
+                Options Journal
+            </a>
+
+        </nav>
+
+    </header>
+
+
+
+    <!-- ==================================================
+         OPTIONS JOURNAL
+         ================================================== -->
+
+    <main class="journal-page">
+
+
+        <!-- ==============================================
+             JOURNAL TITLE
+             ============================================== -->
+
+        <section class="journal-header">
+
+            <div>
+
+                <h1>
+                    Options Journal
+                </h1>
+
+
+                <p class="journal-subtitle">
+
+                    Completed options trades only.
+                    Stock holdings are excluded.
+
+                </p>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ==============================================
+             PERFORMANCE CARDS
+             ============================================== -->
+
+        <section class="stats-grid">
+
+            <section class="stats-tables">
+
+                <!-- ==================================================
+                    PERFORMANCE OVERVIEW
+                    ================================================== -->
+
+                <div class="stats-panel">
+
+                    <h2 class="stats-panel-title">
+                        Performance Overview
+                    </h2>
+
+
+                    <div class="stats-row">
+
+                        <span class="stats-name">
+                            Options P/L
+                        </span>
+
+                        <strong
+                            class="stats-number positive"
+                            id="total-pnl"
+                        >
+                            $0.00
+                        </strong>
+
+                    </div>
+
+
+                    <div class="stats-row">
+
+                        <span class="stats-name">
+                            Total Trades
+                        </span>
+
+                        <strong
+                            class="stats-number"
+                            id="total-trades"
+                        >
+                            0
+                        </strong>
+
+                    </div>
+
+
+                    <div class="stats-row">
+
+                        <span class="stats-name">
+                            Win Rate
+                        </span>
+
+                        <strong
+                            class="stats-number"
+                            id="win-rate"
+                        >
+                            0%
+                        </strong>
+
+                    </div>
+
+
+                    <div class="stats-row">
+
+                        <span class="stats-name">
+                            Winners
+                        </span>
+
+                        <strong
+                            class="stats-number positive"
+                            id="winner-count"
+                        >
+                            0
+                        </strong>
+
+                    </div>
+
+
+                    <div class="stats-row">
+
+                        <span class="stats-name">
+                            Losers
+                        </span>
+
+                        <strong
+                            class="stats-number negative"
+                            id="loser-count"
+                        >
+                            0
+                        </strong>
+
+                    </div>
+
+
+                    <div class="stats-row">
+
+                        <span class="stats-name">
+                            Profit Factor
+                        </span>
+
+                        <strong
+                            class="stats-number"
+                            id="profit-factor"
+                        >
+                            0.00
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- ==================================================
+                    TRADE QUALITY
+                    ================================================== -->
+
+                <div class="stats-panel">
+
+                    <h2 class="stats-panel-title">
+                        Trade Quality
+                    </h2>
+
+
+                    <div class="stats-row">
+
+                        <span class="stats-name">
+                            Avg Winner
+                        </span>
+
+                        <strong
+                            class="stats-number positive"
+                            id="avg-winner"
+                        >
+                            $0.00
+                        </strong>
+
+                    </div>
+
+
+                    <div class="stats-row">
+
+                        <span class="stats-name">
+                            Avg Loser
+                        </span>
+
+                        <strong
+                            class="stats-number negative"
+                            id="avg-loser"
+                        >
+                            $0.00
+                        </strong>
+
+                    </div>
+
+
+                    <div class="stats-row">
+
+                        <span class="stats-name">
+                            Best Trade
+                        </span>
+
+                        <strong
+                            class="stats-number positive"
+                            id="best-trade"
+                        >
+                            $0.00
+                        </strong>
+
+                    </div>
+
+
+                    <div class="stats-row">
+
+                        <span class="stats-name">
+                            Worst Trade
+                        </span>
+
+                        <strong
+                            class="stats-number negative"
+                            id="worst-trade"
+                        >
+                            $0.00
+                        </strong>
+
+                    </div>
+
+
+                    <div class="stats-row">
+
+                        <span class="stats-name">
+                            Avg Return
+                        </span>
+
+                        <strong
+                            class="stats-number"
+                            id="avg-return"
+                        >
+                            0.00%
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+            </section>
+
+        </section>
+
+
+
+        <!-- ==============================================
+             TRADE HISTORY
+             ============================================== -->
+
+        <section class="journal-table-section">
+
+
+            <div class="section-title-row">
+
+                <h2>
+                    Trade History
+                </h2>
+
+
+                <span class="journal-status">
+                    Manual data for now
+                </span>
+
+            </div>
+
+
+
+            <div class="table-wrapper">
+
+
+                <table class="journal-table">
+
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                Date
+                            </th>
+
+                            <th>
+                                Ticker
+                            </th>
+
+                            <th>
+                                Type
+                            </th>
+
+                            <th>
+                                Strike
+                            </th>
+
+                            <th>
+                                Entry
+                            </th>
+
+                            <th>
+                                Exit
+                            </th>
+
+                            <th>
+                                P/L
+                            </th>
+
+                            <th>
+                                Return %
+                            </th>
+
+                            <th>
+                                Result
+                            </th>
+
+                            <th>
+                                Notes
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+
+
+                    <tbody id="journal-body">
+
+
+                    </tbody>
+
+
+                </table>
+
+
+            </div>
+
+
+        </section>
+
+
+    </main>
+    <script src="journal.js"></script>
+</body>
+
+</html>

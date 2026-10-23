@@ -1,69 +1,154 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Option Scanner</title>
 
-  <link rel="stylesheet" href="style.css">
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Market Scanner</title>
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+
 </head>
 
+
 <body>
-  
-  <header class="top-nav">
 
-    <div class="nav-brand">
-        Trading Dashboard
-    </div>
 
-    <nav class="nav-links">
+    <!-- ==================================================
+         TOP NAVIGATION
+         ================================================== -->
 
-        <a
-            href="/"
-            class="nav-link active"
-        >
-            Scanner
-        </a>
+    <header class="top-nav">
 
-        <a
-            href="/journal.html"
-            class="nav-link"
-        >
-            Options Journal
-        </a>
+        <div class="nav-brand">
+            Trading Dashboard
+        </div>
 
-    </nav>
 
-</header>
-  <div class="container">
+        <nav class="nav-links">
 
-    <h1>Market Scanner</h1>
+            <a
+                href="index.html"
+                class="nav-link active"
+            >
+                Scanner
+            </a>
 
-    <table>
-      <thead>
-        <tr>
-          <th>Ticker</th>
-          <th>Price</th>
-          <th>Volume</th>
-          <th>% Change</th>
-          <th class="level-col">PDH</th>
-          <th class="level-col">PMH</th>
-          <th class="level-col">PDL</th>
-          <th class="level-col">PML</th>
-          <th>10m 8EMA</th>
-          <th>EMA Dist</th>
-          <th>Trend</th>
-        </tr>
-      </thead>
 
-      <tbody id="scanner-body">
-      </tbody>
+            <a
+                href="journal.html"
+                class="nav-link"
+            >
+                Options Journal
+            </a>
 
-    </table>
+        </nav>
 
-  </div>
+    </header>
 
-  <script src="script.js"></script>
+
+
+    <!-- ==================================================
+         SCANNER PAGE
+         ================================================== -->
+
+    <main>
+
+        <h1>
+            Market Scanner
+        </h1>
+
+
+        <div class="table-wrapper">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Ticker
+                        </th>
+
+                        <th>
+                            Price
+                        </th>
+
+                        <th>
+                            Volume
+                        </th>
+
+                        <th>
+                            % Change
+                        </th>
+
+                        <th class="level-col">
+                            PDH
+                        </th>
+
+                        <th class="level-col">
+                            PMH
+                        </th>
+
+                        <th class="level-col">
+                            PDL
+                        </th>
+
+                        <th class="level-col">
+                            PML
+                        </th>
+
+                        <th>
+                            10m 8EMA
+                        </th>
+
+                        <th>
+                            EMA Dist
+                        </th>
+
+                        <th>
+                            Trend
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody id="scanner-body">
+
+                    <!--
+                    Scanner rows are created automatically
+                    by script.js
+                    -->
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </main>
+
+
+
+    <!-- ==================================================
+         SCANNER JAVASCRIPT
+         ================================================== -->
+
+    <script src="script.js"></script>
+
 
 </body>
+
 </html>
