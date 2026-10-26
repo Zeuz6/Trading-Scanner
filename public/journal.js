@@ -10,67 +10,40 @@
 // Stock holdings are not included.
 // ==================================================
 
-const optionTrades = [
+let optionTrades = [];
 
-  {
-        date: "10/23/2026",
-        ticker: "CRWD",
-        type: "Call",
-        strike: "-",
-        entry: 34.00,
-        exit: 26.00,
-        notes: ""
-    },  
-    {
-        date: "10/23/2026",
-        ticker: "XOM",
-        type: "Call",
-        strike: "-",
-        entry: 24.00,
-        exit: 12.00,
-        notes: ""
-    },
-    {
-        date: "10/22/2026",
-        ticker: "AMZN",
-        type: "Call",
-        strike: "-",
-        entry: 39.14,
-        exit: 62.86,
-        notes: ""
-    },
+async function loadWebullTrades() {
 
-    {
-        date: "10/21/2026",
-        ticker: "PLTR",
-        type: "Call",
-        strike: "-",
-        entry: 23.05,
-        exit: 36.94,
-        notes: ""
-    },
+    const response =
+        await fetch(
+            "/api/webull/options-history"
+        );
 
-    {
-        date: "10/20/2026",
-        ticker: "MSTR",
-        type: "Call",
-        strike: "-",
-        entry: 16.05,
-        exit: 20.94,
-        notes: ""
-    },
 
-    {
-        date: "10/20/2026",
-        ticker: "INTC",
-        type: "Put",
-        strike: "-",
-        entry: 29.05,
-        exit: 20.94,
-        notes: ""
+    if (!response.ok) {
+
+        throw new Error(
+            `Webull API error: ${response.status}`
+        );
     }
 
-];
+
+    const data =
+        await response.json();
+
+
+    optionTrades =
+        data.trades || [];
+
+
+    console.log(
+        "Loaded Webull trades:",
+        optionTrades
+    );
+
+
+    return optionTrades;
+}
 
 
 
@@ -100,10 +73,18 @@ function formatMoney(value) {
 
 function calculateTradePnL(trade) {
 
-    return (
-        trade.exit -
-        trade.entry
-    );
+    return {
+
+        pnl:
+            Number(
+                trade.pnl || 0
+            ),
+
+        returnPercent:
+            Number(
+                trade.returnPercent || 0
+            )
+    };
 }
 
 
@@ -114,201 +95,149 @@ function calculateTradePnL(trade) {
 
 function calculateStats() {
 
-    if (optionTrades.length === 0) {
-
-        return {
-            totalPnL: 0,
-            winRate: 0,
-            winners: 0,
-            losers: 0,
-            avgWinner: 0,
-            avgLoser: 0,
-            totalTrades: 0,
-            profitFactor: 0,
-            bestTrade: 0,
-            worstTrade: 0,
-            avgReturn: 0
-        };
-    }
-
-
-    const results =
-        optionTrades.map(
-            trade => {
-
-                const pnl =
-                    calculateTradePnL(
-                        trade
-                    );
-
-
-                const returnPercent =
-                    (
-                        pnl /
-                        trade.entry
-                    ) * 100;
-
-
-                return {
-                    pnl,
-                    returnPercent
-                };
-            }
-        );
-
-
-    const pnlValues =
-        results.map(
-            result =>
-                result.pnl
-        );
-
-
-    const returnValues =
-        results.map(
-            result =>
-                result.returnPercent
-        );
-
-
-    const winningTrades =
-        pnlValues.filter(
-            pnl =>
-                pnl > 0
-        );
-
-
-    const losingTrades =
-        pnlValues.filter(
-            pnl =>
-                pnl < 0
-        );
-
-
-    const totalPnL =
-        pnlValues.reduce(
-            (sum, pnl) =>
-                sum + pnl,
-            0
-        );
-
-
-    const winners =
-        winningTrades.length;
-
-
-    const losers =
-        losingTrades.length;
-
-
     const totalTrades =
         optionTrades.length;
 
 
-    const winRate =
-        (
-            winners /
-            totalTrades
-        ) * 100;
+    const winners =
+        optionTrades.filter(
+            trade =>
+                trade.pnl > 0
+        );
 
 
-    const avgWinner =
-        winners > 0
-            ? winningTrades.reduce(
-                (sum, pnl) =>
-                    sum + pnl,
-                0
-            ) / winners
-            : 0;
+    const losers =
+        optionTrades.filter(
+            trade =>
+                trade.pnl < 0
+        );
 
 
-    const avgLoser =
-        losers > 0
-            ? losingTrades.reduce(
-                (sum, pnl) =>
-                    sum + pnl,
-                0
-            ) / losers
-            : 0;
+    const totalPnL =
+        optionTrades.reduce(
+            (sum, trade) =>
+                sum + trade.pnl,
+            0
+        );
 
-
-    // ------------------------------------------
-    // PROFIT FACTOR
-    //
-    // Gross wins / Gross losses
-    // ------------------------------------------
 
     const grossProfit =
-        winningTrades.reduce(
-            (sum, pnl) =>
-                sum + pnl,
+        winners.reduce(
+            (sum, trade) =>
+                sum + trade.pnl,
             0
         );
 
 
     const grossLoss =
         Math.abs(
-            losingTrades.reduce(
-                (sum, pnl) =>
-                    sum + pnl,
+            losers.reduce(
+                (sum, trade) =>
+                    sum + trade.pnl,
                 0
             )
         );
 
 
+    const winRate =
+        totalTrades > 0
+            ? (
+                winners.length /
+                totalTrades
+            ) * 100
+            : 0;
+
+
+    const avgWinner =
+        winners.length > 0
+            ?
+            grossProfit /
+            winners.length
+            :
+            0;
+
+
+    const avgLoser =
+        losers.length > 0
+            ?
+            losers.reduce(
+                (sum, trade) =>
+                    sum + trade.pnl,
+                0
+            ) /
+            losers.length
+            :
+            0;
+
+
     const profitFactor =
         grossLoss > 0
-            ? grossProfit /
-              grossLoss
-            : grossProfit > 0
+            ?
+            grossProfit /
+            grossLoss
+            :
+            grossProfit > 0
                 ? Infinity
                 : 0;
 
 
-    // ------------------------------------------
-    // BEST / WORST
-    // ------------------------------------------
-
     const bestTrade =
-        Math.max(
-            ...pnlValues
-        );
+        totalTrades > 0
+            ?
+            Math.max(
+                ...optionTrades.map(
+                    trade =>
+                        trade.pnl
+                )
+            )
+            :
+            0;
 
 
     const worstTrade =
-        Math.min(
-            ...pnlValues
-        );
+        totalTrades > 0
+            ?
+            Math.min(
+                ...optionTrades.map(
+                    trade =>
+                        trade.pnl
+                )
+            )
+            :
+            0;
 
-
-    // ------------------------------------------
-    // AVG RETURN %
-    // ------------------------------------------
 
     const avgReturn =
-        returnValues.reduce(
-            (sum, value) =>
-                sum + value,
-            0
-        ) /
-        returnValues.length;
+        totalTrades > 0
+            ?
+            optionTrades.reduce(
+                (sum, trade) =>
+                    sum +
+                    trade.returnPercent,
+                0
+            ) /
+            totalTrades
+            :
+            0;
 
 
     return {
 
         totalPnL,
 
+        totalTrades,
+
         winRate,
 
-        winners,
+        winners:
+            winners.length,
 
-        losers,
+        losers:
+            losers.length,
 
         avgWinner,
 
         avgLoser,
-
-        totalTrades,
 
         profitFactor,
 
@@ -451,9 +380,9 @@ function renderStats() {
 function renderTrades() {
 
     const tableBody =
-        document.getElementById(
-            "journal-body"
-        );
+    document.getElementById(
+        "journal-body"
+    );
 
 
     let tableHTML =
@@ -466,15 +395,10 @@ function renderTrades() {
     ) {
 
         const pnl =
-            calculateTradePnL(
-                trade
-            );
-        
+            trade.pnl;
+
         const returnPercent =
-        (
-            pnl /
-            trade.entry
-        ) * 100;
+            trade.returnPercent;
 
         const isWin =
             pnl > 0;
@@ -503,7 +427,7 @@ function renderTrades() {
             <tr>
 
                 <td>
-                    ${trade.date}
+                    ${formatDate(trade.date)}
                 </td>
 
 
@@ -568,18 +492,62 @@ function renderTrades() {
         tableHTML;
 }
 
+function formatDate(dateString) {
 
+    const date =
+        new Date(dateString);
+
+    return date.toLocaleDateString(
+        "en-US",
+        {
+            month: "2-digit",
+            day: "2-digit",
+            year: "numeric"
+        }
+    );
+}
 
 // ==================================================
 // START JOURNAL
 // ==================================================
 
-function startJournal() {
+async function startJournal() {
 
-    renderStats();
+    try {
 
-    renderTrades();
+        await loadWebullTrades();
+
+        renderStats();
+
+        renderTrades();
+
+        console.log(
+            `Journal loaded ${optionTrades.length} Webull trades.`
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Failed to start journal:",
+            error
+        );
+
+        const tableBody =
+            document.getElementById(
+                "journal-body"
+            );
+
+        if (tableBody) {
+
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="10">
+                        Failed to load Webull trades.
+                    </td>
+                </tr>
+            `;
+        }
+    }
 }
-
 
 startJournal();
